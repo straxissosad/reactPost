@@ -1,53 +1,64 @@
-import React, { useRef, useState } from 'react';
+import React, {useState, useMemo, useEffect} from 'react';
 import './styles/App.css';
 import PostList from './components/PostList';
 import PostForm from './components/PostForm';
-import MySelect from './components/UI/select/MySelect';
+import PostFilter from "./components/PostFilter";
+import MyModal from "./components/UI/MyModal/MyModal";
+import MyButton from "./components/UI/button/MyButton";
+import {usePosts} from "./hooks/usePosts";
+import PostService from "./API/PostService";
+import Loader from "./components/UI/Loader/Loader";
+import {useFetching} from "./hooks/useFetching";
 
 function App() {
-  const [posts, setPosts] = useState([
-    {id:1, title:"JavaScript 1", body:"Description"},
-    {id:2, title:"JavaScript 2", body:"Description"},
-    {id:3, title:"JavaScript 3", body:"Description"}
-  ])
+    const initPost: {id: number, title: string, body: string}[] = [];
+    const [posts, setPosts] = useState(initPost)
+    const [filter, setFilter] = useState({sort:'', query: ''});
+    const [modal, setModal] = useState(false);
+    const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
+    const [fetchPosts, isPostsLoading, postError] = useFetching( async () => {
+        const posts = await PostService.getAll();
+        setPosts(posts);
+    })
 
-  const[selectedSort, setSelectedSort] = useState('')
+    useEffect(() =>{
+        fetchPosts()
+    },[])
 
-  const createPost = (newPost: any) =>{
-    setPosts([...posts, newPost]);
-  }
+    const createPost = (newPost: any) => {
+        setPosts([...posts, newPost]);
+        setModal(false)
+    }
 
-  //получаем пост из дочернего элемента
-  const removePost = (post:any) =>{
-    setPosts(posts.filter(p => p.id !== post.id))
-  }
 
-  const sortPosts = (sort:any) =>{
-    setSelectedSort(sort);
-    setPosts([...posts.sort((a:any,b:any) => a[sort].localeCompare(b[sort]))]);
-  }
+    //получаем пост из дочернего элемента
+    const removePost = (post: any) => {
+        setPosts(posts.filter(p => p.id !== post.id))
+    }
 
-  return (
-    <div className='App'>
-      <PostForm create = {createPost}/>
-      <hr style={{margin: '15px 0'}}/>
-      <div>
-        <MySelect
-          value={selectedSort}
-          onChange={sortPosts}
-          defaultValue="сортировка"
-          options= {[
-            {value:'title', name: "По названию"},
-            {value:'body', name: "По описанию"}
-          ]}
-        />
-      </div>
-      {posts.length
-        ? <PostList  remove={removePost} posts={posts} title="Посты про JS"/>
-        : <h1 style={{textAlign: 'center'}}>Посты не были найдены</h1>
-      }
-    </div>
-  )
+    return (
+        <div className='App'>
+            <MyButton style={{marginTop:'30px'}} onClick={()=>setModal(true)}>
+                Создать пользователя
+            </MyButton>
+            <MyModal visible={modal} setVisible={setModal}>
+                <PostForm create={createPost}/>
+            </MyModal>
+            <hr style={{margin: '15px 0'}}/>
+            <PostFilter
+                filter={filter}
+                setFilter={setFilter}
+            />
+            {postError &&
+                <h1>Произошла ошибка ${postError}</h1>
+            }
+            {isPostsLoading
+                ? <div style={{display: "flex", justifyContent: "center", marginTop: "50px"}}><Loader /></div>
+                : <PostList remove={removePost} posts={sortedAndSearchedPosts} title="Посты про JS"/>
+
+            }
+        </div>
+    )
 }
- 
+
 export default App;
