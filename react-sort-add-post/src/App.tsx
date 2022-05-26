@@ -1,4 +1,4 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useEffect} from 'react';
 import './styles/App.css';
 import PostList from './components/PostList';
 import PostForm from './components/PostForm';
@@ -6,21 +6,30 @@ import PostFilter from "./components/PostFilter";
 import MyModal from "./components/MyModal/MyModal";
 import MyButton from "./components/UI/button/MyButton";
 import {usePosts} from "./hooks/usePosts";
+import PostService from "./API/PostService";
 
 function App() {
-    const [posts, setPosts] = useState([
-        {id: 1, title: "JavaScript 1", body: "Description"},
-        {id: 2, title: "JavaScript 2", body: "Description"},
-        {id: 3, title: "JavaScript 3", body: "Description"}
-    ])
-
+    const initPost: {id: number, title: string, body: string}[] = [];
+    const [posts, setPosts] = useState(initPost)
     const [filter, setFilter] = useState({sort:'', query: ''});
     const [modal, setModal] = useState(false);
     const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
+    const [isPostsLoading, setIsPostsLoading] = useState(false)
+
+    useEffect(() =>{
+        fetchPosts()
+    },[])
 
     const createPost = (newPost: any) => {
         setPosts([...posts, newPost]);
         setModal(false)
+    }
+
+    async function fetchPosts() {
+        setIsPostsLoading(true);
+        const posts = await PostService.getAll();
+        setPosts(posts);
+        setIsPostsLoading(false)
     }
 
     //получаем пост из дочернего элемента
@@ -41,7 +50,11 @@ function App() {
                 filter={filter}
                 setFilter={setFilter}
             />
-            <PostList remove={removePost} posts={sortedAndSearchedPosts} title="Посты про JS"/>
+            {isPostsLoading
+                ? <h1>Идет загрузка</h1>
+                : <PostList remove={removePost} posts={sortedAndSearchedPosts} title="Посты про JS"/>
+
+            }
         </div>
     )
 }
