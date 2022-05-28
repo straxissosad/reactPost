@@ -9,21 +9,30 @@ import {usePosts} from "./hooks/usePosts";
 import PostService from "./API/PostService";
 import Loader from "./components/UI/Loader/Loader";
 import {useFetching} from "./hooks/useFetching";
+import {getPageCount, getPagesArray} from "./utils/page";
+import Pagination from "./pagination/Pagination";
 
 function App() {
     const initPost: {id: number, title: string, body: string}[] = [];
     const [posts, setPosts] = useState(initPost)
     const [filter, setFilter] = useState({sort:'', query: ''});
     const [modal, setModal] = useState(false);
+    const [totalPages, setTotalPages] = useState(0);
+    const [limit, setLimit] = useState(10)
+    const [page, setPage] = useState(1)
     const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
-    const [fetchPosts, isPostsLoading, postError] = useFetching( async () => {
-        const posts = await PostService.getAll();
-        setPosts(posts);
-    })
+
+    const [fetchPosts, isPostsLoading, postError] = useFetching(async () => {
+        const response = await PostService.getAll(limit, page);
+        setPosts(response.data);
+        const totalCount = response.headers['x-total-count']
+        // @ts-ignore
+        setTotalPages(getPageCount(totalCount, limit))
+    });
 
     useEffect(() =>{
         fetchPosts()
-    },[])
+    },[page])
 
     const createPost = (newPost: any) => {
         setPosts([...posts, newPost]);
@@ -34,6 +43,10 @@ function App() {
     //получаем пост из дочернего элемента
     const removePost = (post: any) => {
         setPosts(posts.filter(p => p.id !== post.id))
+    }
+
+    const changePage = (page: any) => {
+      setPage(page);
     }
 
     return (
@@ -57,6 +70,11 @@ function App() {
                 : <PostList remove={removePost} posts={sortedAndSearchedPosts} title="Посты про JS"/>
 
             }
+            <Pagination
+                page={page}
+                changePage={changePage}
+                totalPages={totalPages}
+            />
         </div>
     )
 }
